@@ -8,7 +8,7 @@ Great — here’s a **detailed, AI-executable step-by-step plan** to **build a 
 
 # ✅ Goal:
 
-> Build a Roslyn analyzer that forbids comments, enforce it on itself via CI, and publish it to NuGet only if it passes.
+> Build a Roslyn analyzer that forbids comments that don't have the shibbolet string "[!]" in it, unless it's a xmldoc comment, enforce it on itself via CI, and publish it to NuGet only if it passes.
 
 ---
 
