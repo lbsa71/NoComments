@@ -9,17 +9,20 @@ namespace NoCommentsAnalyzer
     public class NoCommentsAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "NC0001";
+        private const string Category = "Formatting";
+        private const string HelpLinkUri = "https://github.com/lbsa71/no-ai-comments";
 
         private const string Shibboleth = "[!]";
         
         private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             DiagnosticId,
-            "Unauthorized comment detected",
-            "Comments must include the shibboleth string '[!]' to verify they are human-written",
-            "Formatting",
-            DiagnosticSeverity.Warning,
+            title: "Unauthorized comment detected",
+            messageFormat: "Comments must include the shibboleth string '[!]' to verify they are human-written",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true,
-            description: "All non-XML documentation comments must include the '[!]' marker to indicate they are human-written.");
+            description: "All non-XML documentation comments must include the '[!]' marker to indicate they are human-written.",
+            helpLinkUri: HelpLinkUri);
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
