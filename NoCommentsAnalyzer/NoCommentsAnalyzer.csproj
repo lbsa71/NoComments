@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackageId>NoCommentsAnalyzer</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Stefan Andersson</Authors>
+    <Description>Roslyn analyzer that forbids comments in C# code that don't contain the shibboleth "[!]".</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/lbsa71/no-ai-comments</RepositoryUrl>
+    <IncludeBuildOutput>true</IncludeBuildOutput>
+    <LangVersion>latest</LangVersion>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <AnalyzerRoslynVersion>default</AnalyzerRoslynVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
