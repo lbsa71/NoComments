@@ -288,12 +288,20 @@ jobs:
       - name: Test
         run: dotnet test --no-restore --verbosity normal
 
+      - name: Setup GitHub Packages source
+        if: github.ref == 'refs/heads/main'
+        run: dotnet nuget add source --username ${{ github.repository_owner }} --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
       - name: Pack
         run: dotnet pack NoCommentsAnalyzer -c Release -o ./artifacts
 
       - name: Publish to NuGet
         if: github.ref == 'refs/heads/main'
         run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+      - name: Publish to GitHub Packages
+        if: github.ref == 'refs/heads/main'
+        run: dotnet nuget push ./artifacts/*.nupkg --source github
 ```
 
 ---
