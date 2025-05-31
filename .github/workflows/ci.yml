@@ -28,6 +28,12 @@ jobs:
       - name: Pack
         run: dotnet pack NoCommentsAnalyzer -c Release -o ./artifacts
 
+      - name: Debug Ref
+        run: echo "${{ github.ref }}"
+      
+      - name: List Artifacts
+        run: ls -la ./artifacts
+      
       - name: Publish to NuGet
         if: github.ref == 'refs/heads/main'
-        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./artifacts/*.nupkg --skip-duplicate --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
