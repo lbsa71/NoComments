@@ -28,6 +28,15 @@ jobs:
       - name: Pack
         run: dotnet pack NoCommentsAnalyzer -c Release -o ./artifacts
 
+      - name: Setup local NuGet source for package validation
+        run: dotnet nuget add source ./artifacts --name local --store-password-in-clear-text
+
+      - name: Validate package usage
+        run: |
+          cd ValidatePackage
+          dotnet restore --source ../artifacts --source https://api.nuget.org/v3/index.json
+          dotnet build --no-restore --warnaserror
+
       - name: Debug Ref
         run: echo "${{ github.ref }}"
       
