@@ -13,8 +13,7 @@ namespace NoCommentsAnalyzer
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NoCommentsCodeFixProvider)), Shared]
     public class NoCommentsCodeFixProvider : CodeFixProvider
     {
-        private const string Title = "Add [!] marker to comment";
-        private const string Shibboleth = "[!]";
+        private const string Title = "Remove unauthorized comment";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds =>
             ImmutableArray.Create(NoCommentsAnalyzer.DiagnosticId);
@@ -34,35 +33,18 @@ namespace NoCommentsAnalyzer
 
             var action = CodeAction.Create(
                 title: Title,
-                createChangedDocument: c => AddShibbolethToComment(context.Document, trivia, c),
+                createChangedDocument: c => RemoveUnauthorizedComment(context.Document, trivia, c),
                 equivalenceKey: Title);
 
             context.RegisterCodeFix(action, diagnostic);
         }
 
-        private static async Task<Document> AddShibbolethToComment(Document document, SyntaxTrivia trivia, CancellationToken cancellationToken)
+        private static async Task<Document> RemoveUnauthorizedComment(Document document, SyntaxTrivia trivia, CancellationToken cancellationToken)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            var commentText = trivia.ToString();
-            string newCommentText;
-
-            if (trivia.IsKind(SyntaxKind.SingleLineCommentTrivia))
-            {
-                // For single-line comments: "// comment" -> "// [!] comment"
-                newCommentText = commentText.Replace("//", $"// {Shibboleth}");
-            }
-            else if (trivia.IsKind(SyntaxKind.MultiLineCommentTrivia))
-            {
-                // For multi-line comments: "/* comment */" -> "/* [!] comment */"
-                newCommentText = commentText.Replace("/*", $"/* {Shibboleth}");
-            }
-            else
-            {
-                return document;
-            }
-
-            var newTrivia = SyntaxFactory.Comment(newCommentText);
-            var newRoot = root.ReplaceTrivia(trivia, newTrivia);
+            
+            // Remove the comment trivia entirely
+            var newRoot = root.ReplaceTrivia(trivia, SyntaxFactory.Whitespace(""));
 
             return document.WithSyntaxRoot(newRoot);
         }
