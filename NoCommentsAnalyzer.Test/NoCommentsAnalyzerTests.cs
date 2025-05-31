@@ -22,5 +22,16 @@ namespace NoCommentsAnalyzer.Test
             // Verify we have 1 supported diagnostic
             Assert.AreEqual(1, analyzer.SupportedDiagnostics.Length);
         }
+
+        [TestMethod]
+        public void TestCodeFixProviderIsCreatedSuccessfully()
+        {
+            // This test simply verifies that the code fix provider can be instantiated
+            var codeFixProvider = new NoCommentsCodeFixProvider();
+            Assert.IsNotNull(codeFixProvider);
+            
+            // Verify it can fix NC0001
+            Assert.IsTrue(codeFixProvider.FixableDiagnosticIds.Contains("NC0001"));
+        }
     }
 }
