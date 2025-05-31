@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>NoCommentsAnalyzer</PackageId>
-    <Version>1.0.0</Version>
     <Authors>Stefan Andersson</Authors>
     <Description>Roslyn analyzer that forbids comments in C# code that don't contain the shibboleth "[!]".</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
