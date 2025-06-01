@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace NoCommentsAnalyzer
 {
@@ -43,10 +44,28 @@ namespace NoCommentsAnalyzer
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             
-            // Remove the comment trivia entirely
-            var newRoot = root.ReplaceTrivia(trivia, SyntaxFactory.Whitespace(""));
-
-            return document.WithSyntaxRoot(newRoot);
+            // Remove the comment trivia and any trailing newline to prevent double newlines
+            var triviaList = trivia.Token.TrailingTrivia;
+            var triviaIndex = triviaList.IndexOf(trivia);
+            
+            // Check if there's a newline trivia immediately after this comment
+            var hasTrailingNewline = triviaIndex >= 0 && triviaIndex < triviaList.Count - 1 && 
+                                   triviaList[triviaIndex + 1].IsKind(SyntaxKind.EndOfLineTrivia);
+            
+            if (hasTrailingNewline)
+            {
+                // Remove both comment and the trailing newline
+                var newTrailingTrivia = triviaList.RemoveAt(triviaIndex).RemoveAt(triviaIndex);
+                var newToken = trivia.Token.WithTrailingTrivia(newTrailingTrivia);
+                var newRoot = root.ReplaceToken(trivia.Token, newToken);
+                return document.WithSyntaxRoot(newRoot);
+            }
+            else
+            {
+                // Just remove the comment trivia
+                var newRoot = root.ReplaceTrivia(trivia, SyntaxFactory.Whitespace(""));
+                return document.WithSyntaxRoot(newRoot);
+            }
         }
     }
 }
