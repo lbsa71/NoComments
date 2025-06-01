@@ -97,5 +97,57 @@ namespace NoCommentsAnalyzer.Test
             var regularResult = (bool)isInlineDisabledMethodRegular.Invoke(null, new object[] { regularComment });
             Assert.IsFalse(regularResult, "Regular comment should not be detected as disabled");
         }
+
+        [TestMethod]
+        public void TestIntentionalMarkerDetection()
+        {
+            // Test intentional marker detection with custom markers
+            var defaultMarkers = new[] { "HUMAN:", "NOTE:", "INTENT:", "OK:", "[!]" };
+            var customMarkers = new[] { "CUSTOM:", "SPECIAL:" };
+            
+            var containsIntentionalMarkerMethod = typeof(NoCommentsAnalyzer)
+                .GetMethod("ContainsIntentionalMarker", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Test default markers
+            var result1 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { "// HUMAN: This is intentional", defaultMarkers });
+            Assert.IsTrue(result1);
+            
+            var result2 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { "// NOTE: This is intentional", defaultMarkers });
+            Assert.IsTrue(result2);
+            
+            // Test custom markers
+            var result3 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { "// CUSTOM: This is intentional", customMarkers });
+            Assert.IsTrue(result3);
+            
+            // Test that default markers don't work with custom config
+            var result4 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { "// HUMAN: This is intentional", customMarkers });
+            Assert.IsFalse(result4);
+        }
+
+        [TestMethod]
+        public void TestSuppressionPatternDetection()
+        {
+            // Test suppression pattern detection with custom patterns
+            var defaultPatterns = new[] { "TODO:", "HACK:", "FIXME:" };
+            var customPatterns = new[] { "TODO:", "BUG:", "REVIEW:" };
+            
+            var isSuppressionPatternMethod = typeof(NoCommentsAnalyzer)
+                .GetMethod("IsSuppressionPattern", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Test default patterns
+            var result1 = (bool)isSuppressionPatternMethod.Invoke(null, new object[] { "// TODO: Fix this", defaultPatterns });
+            Assert.IsTrue(result1);
+            
+            var result2 = (bool)isSuppressionPatternMethod.Invoke(null, new object[] { "// HACK: Temporary workaround", defaultPatterns });
+            Assert.IsTrue(result2);
+            
+            // Test custom patterns
+            var result3 = (bool)isSuppressionPatternMethod.Invoke(null, new object[] { "// BUG: Known issue", customPatterns });
+            Assert.IsTrue(result3);
+            
+            // Test that default patterns don't work with custom config where not included
+            var result4 = (bool)isSuppressionPatternMethod.Invoke(null, new object[] { "// HACK: Known issue", customPatterns });
+            Assert.IsFalse(result4);
+        }
     }
 }
