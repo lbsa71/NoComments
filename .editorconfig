@@ -1,0 +1,17 @@
+# Example .editorconfig to test NoCommentsAnalyzer configuration
+
+[*.cs]
+# Standard diagnostic severity
+dotnet_diagnostic.NC0001.severity = warning
+
+# NoCommentsAnalyzer configuration options
+nocomments_analyzer.enable_intentional_markers = true
+nocomments_analyzer.enable_suppression_patterns = true
+nocomments_analyzer.enable_license_banner = true
+nocomments_analyzer.enable_xml_documentation = true
+nocomments_analyzer.disable_for_file = false
+
+# Custom patterns (comma-separated)
+nocomments_analyzer.intentional_markers = HUMAN:,NOTE:,INTENT:,OK:,[!]
+nocomments_analyzer.suppression_patterns = TODO:,HACK:,FIXME:
+nocomments_analyzer.license_patterns = Copyright,Licensed,SPDX-License-Identifier

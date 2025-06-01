@@ -103,6 +103,37 @@ The analyzer runs with default severity of `Warning`. You can configure it in yo
 # .editorconfig
 [*.cs]
 dotnet_diagnostic.NC0001.severity = error
+
+# Enable/disable features (default: all true)
+nocomments_analyzer.enable_intentional_markers = true
+nocomments_analyzer.enable_suppression_patterns = true
+nocomments_analyzer.enable_license_banner = true
+nocomments_analyzer.enable_xml_documentation = true
+
+# Disable analyzer for specific files
+nocomments_analyzer.disable_for_file = false
+
+# Customize allowed patterns (comma-separated)
+nocomments_analyzer.intentional_markers = HUMAN:,NOTE:,INTENT:,OK:,[!]
+nocomments_analyzer.suppression_patterns = TODO:,HACK:,FIXME:
+nocomments_analyzer.license_patterns = Copyright,Licensed,SPDX-License-Identifier
+```
+
+### Feature Configuration
+
+- **`enable_intentional_markers`**: Enable/disable checking for intentional comment markers
+- **`enable_suppression_patterns`**: Enable/disable checking for TODO/HACK/FIXME patterns  
+- **`enable_license_banner`**: Enable/disable checking for license banner comments
+- **`enable_xml_documentation`**: Enable/disable XML documentation comment detection
+- **`disable_for_file`**: Disable the analyzer entirely for specific files
+
+### Inline Disabling
+
+You can disable the analyzer for individual comments using the inline directive:
+
+```csharp
+// nocomments:disable This comment will be ignored by the analyzer
+var x = 42;
 ```
 
 ## License

@@ -1,0 +1,15 @@
+# Example showing disabled features
+[DisabledFeaturesExample.cs]
+nocomments_analyzer.enable_intentional_markers = false
+nocomments_analyzer.enable_suppression_patterns = false
+nocomments_analyzer.disable_for_file = false
+
+# Example showing custom patterns  
+[CustomPatternsExample.cs]
+nocomments_analyzer.intentional_markers = CUSTOM:,SPECIAL:,HUMAN:
+nocomments_analyzer.suppression_patterns = TODO:,BUG:,REVIEW:
+nocomments_analyzer.license_patterns = Copyright,MIT,Apache
+
+# Example of completely disabling for a file
+[LegacyCode.cs]
+nocomments_analyzer.disable_for_file = true
