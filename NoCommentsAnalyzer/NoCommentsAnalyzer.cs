@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -170,12 +171,68 @@ namespace NoCommentsAnalyzer
             if (triviaPosition >= firstMeaningfulNode.SpanStart)
                 return false;
 
-            return CheckLicenseContent(trivia.ToString(), licensePatterns);
+            // Find the contiguous block of comments that this trivia belongs to
+            // and check if any comment in that block contains license patterns
+            return IsPartOfLicenseBlock(trivia, root, firstMeaningfulNode, licensePatterns);
         }
 
         private static bool CheckLicenseContent(string commentText, string[] licensePatterns)
         {
             return licensePatterns.Any(pattern => commentText.IndexOf(pattern, System.StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static bool IsPartOfLicenseBlock(SyntaxTrivia trivia, SyntaxNode root, SyntaxNode firstMeaningfulNode, string[] licensePatterns)
+        {
+            // Get all trivia before the first meaningful node
+            var allTrivia = root.DescendantTrivia().Where(t => t.SpanStart < firstMeaningfulNode.SpanStart).ToList();
+            
+            // Find contiguous blocks of comments
+            var commentBlocks = GetContiguousCommentBlocks(allTrivia);
+            
+            // Find which block contains our trivia
+            var containingBlock = commentBlocks.FirstOrDefault(block => block.Contains(trivia));
+            
+            if (containingBlock == null)
+                return false;
+            
+            // Check if any comment in the containing block has license content
+            return containingBlock.Any(t => CheckLicenseContent(t.ToString(), licensePatterns));
+        }
+
+        private static List<List<SyntaxTrivia>> GetContiguousCommentBlocks(List<SyntaxTrivia> allTrivia)
+        {
+            var blocks = new List<List<SyntaxTrivia>>();
+            var currentBlock = new List<SyntaxTrivia>();
+            
+            foreach (var trivia in allTrivia)
+            {
+                if (trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia))
+                {
+                    currentBlock.Add(trivia);
+                }
+                else if (trivia.IsKind(SyntaxKind.EndOfLineTrivia) || trivia.IsKind(SyntaxKind.WhitespaceTrivia))
+                {
+                    // Whitespace and newlines don't break comment blocks
+                    continue;
+                }
+                else
+                {
+                    // Other trivia types break comment blocks
+                    if (currentBlock.Count > 0)
+                    {
+                        blocks.Add(new List<SyntaxTrivia>(currentBlock));
+                        currentBlock.Clear();
+                    }
+                }
+            }
+            
+            // Add the last block if it has comments
+            if (currentBlock.Count > 0)
+            {
+                blocks.Add(currentBlock);
+            }
+            
+            return blocks;
         }
     }
 }
