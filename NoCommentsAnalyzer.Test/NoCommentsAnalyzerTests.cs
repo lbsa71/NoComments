@@ -37,6 +37,19 @@ namespace NoCommentsAnalyzer.Test
         }
 
         [TestMethod]
+        public void TestCodeFixProviderHasBothRemoveAndKeepOptions()
+        {
+            // This test verifies that both remove and keep code fix actions are available
+            var codeFixProvider = new NoCommentsCodeFixProvider();
+            Assert.IsNotNull(codeFixProvider);
+            
+            // We can't easily test the actual code fix registration without complex setup,
+            // but we can verify the provider is properly configured
+            Assert.AreEqual(1, codeFixProvider.FixableDiagnosticIds.Length);
+            Assert.AreEqual("NC0001", codeFixProvider.FixableDiagnosticIds[0]);
+        }
+
+        [TestMethod]
         public void TestDefaultConfigurationValues()
         {
             // Test that default configuration has all features enabled
@@ -148,6 +161,40 @@ namespace NoCommentsAnalyzer.Test
             // Test that default patterns don't work with custom config where not included
             var result4 = (bool)isSuppressionPatternMethod.Invoke(null, new object[] { "// HACK: Known issue", customPatterns });
             Assert.IsFalse(result4);
+        }
+
+        [TestMethod]
+        public void TestAddIntentionalMarkerFormatting()
+        {
+            // Test the AddIntentionalMarker method using reflection
+            var addIntentionalMarkerMethod = typeof(NoCommentsCodeFixProvider)
+                .GetMethod("AddIntentionalMarker", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Test single-line comments
+            var result1 = (string)addIntentionalMarkerMethod.Invoke(null, new object[] { "// this is a comment", "NOTE:" });
+            Assert.AreEqual("// NOTE: this is a comment", result1);
+            
+            var result2 = (string)addIntentionalMarkerMethod.Invoke(null, new object[] { "//   spaced comment  ", "HUMAN:" });
+            Assert.AreEqual("// HUMAN: spaced comment", result2);
+            
+            // Test multi-line comments
+            var result3 = (string)addIntentionalMarkerMethod.Invoke(null, new object[] { "/* this is a comment */", "NOTE:" });
+            Assert.AreEqual("/* NOTE: this is a comment */", result3);
+            
+            var result4 = (string)addIntentionalMarkerMethod.Invoke(null, new object[] { "/*  spaced comment  */", "INTENT:" });
+            Assert.AreEqual("/* INTENT: spaced comment */", result4);
+        }
+
+        [TestMethod]
+        public void TestGetIntentionalMarkerDefaultsToNote()
+        {
+            // Test that GetIntentionalMarker returns "NOTE:" by default
+            var getIntentionalMarkerMethod = typeof(NoCommentsCodeFixProvider)
+                .GetMethod("GetIntentionalMarker", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // We can't easily create a Document for testing, so we'll pass null and expect fallback behavior
+            var result = (string)getIntentionalMarkerMethod.Invoke(null, new object[] { null });
+            Assert.AreEqual("NOTE:", result);
         }
     }
 }

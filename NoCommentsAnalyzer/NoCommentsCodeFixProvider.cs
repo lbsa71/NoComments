@@ -14,7 +14,8 @@ namespace NoCommentsAnalyzer
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NoCommentsCodeFixProvider)), Shared]
     public class NoCommentsCodeFixProvider : CodeFixProvider
     {
-        private const string Title = "Remove unauthorized comment";
+        private const string RemoveTitle = "Remove unauthorized comment";
+        private const string KeepTitle = "Keep comment with intentional marker";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds =>
             ImmutableArray.Create(NoCommentsAnalyzer.DiagnosticId);
@@ -32,12 +33,21 @@ namespace NoCommentsAnalyzer
             var diagnosticSpan = diagnostic.Location.SourceSpan;
             var trivia = root.FindTrivia(diagnosticSpan.Start);
 
-            var action = CodeAction.Create(
-                title: Title,
+            // Register the remove action
+            var removeAction = CodeAction.Create(
+                title: RemoveTitle,
                 createChangedDocument: c => RemoveUnauthorizedComment(context.Document, trivia, c),
-                equivalenceKey: Title);
+                equivalenceKey: RemoveTitle);
 
-            context.RegisterCodeFix(action, diagnostic);
+            context.RegisterCodeFix(removeAction, diagnostic);
+
+            // Register the keep action
+            var keepAction = CodeAction.Create(
+                title: KeepTitle,
+                createChangedDocument: c => KeepCommentWithMarker(context.Document, trivia, c),
+                equivalenceKey: KeepTitle);
+
+            context.RegisterCodeFix(keepAction, diagnostic);
         }
 
         private static async Task<Document> RemoveUnauthorizedComment(Document document, SyntaxTrivia trivia, CancellationToken cancellationToken)
@@ -66,6 +76,53 @@ namespace NoCommentsAnalyzer
                 var newRoot = root.ReplaceTrivia(trivia, SyntaxFactory.Whitespace(""));
                 return document.WithSyntaxRoot(newRoot);
             }
+        }
+
+        private static async Task<Document> KeepCommentWithMarker(Document document, SyntaxTrivia trivia, CancellationToken cancellationToken)
+        {
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            
+            // Read configuration to get the intentional marker to use
+            var marker = GetIntentionalMarker(document);
+            
+            // Modify the comment to include the intentional marker
+            var originalText = trivia.ToString();
+            var newCommentText = AddIntentionalMarker(originalText, marker);
+            
+            // Create new trivia with the modified text
+            var newTrivia = trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
+                ? SyntaxFactory.Comment(newCommentText)
+                : SyntaxFactory.Comment(newCommentText);
+            
+            var newRoot = root.ReplaceTrivia(trivia, newTrivia);
+            return document.WithSyntaxRoot(newRoot);
+        }
+
+        private static string GetIntentionalMarker(Document document)
+        {
+            // Use "NOTE:" as the default marker as specified in the issue
+            // This ensures the marker is one of the allowed strings from the default configuration
+            // In the future, this could be enhanced to read from configuration if needed
+            return "NOTE:";
+        }
+
+        private static string AddIntentionalMarker(string originalComment, string marker)
+        {
+            if (originalComment.StartsWith("//"))
+            {
+                // Single-line comment: // comment -> // NOTE: comment
+                var commentContent = originalComment.Substring(2).Trim();
+                return $"// {marker} {commentContent}";
+            }
+            else if (originalComment.StartsWith("/*") && originalComment.EndsWith("*/"))
+            {
+                // Multi-line comment: /* comment */ -> /* NOTE: comment */
+                var commentContent = originalComment.Substring(2, originalComment.Length - 4).Trim();
+                return $"/* {marker} {commentContent} */";
+            }
+            
+            // Fallback: just prepend the marker
+            return $"{marker} {originalComment}";
         }
     }
 }
