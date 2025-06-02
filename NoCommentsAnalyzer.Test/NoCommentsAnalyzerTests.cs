@@ -294,9 +294,21 @@ namespace NoCommentsAnalyzer.Test
             var result1 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { firstCommentWithMarker, markers });
             Assert.IsTrue(result1, "First comment with marker should be recognized");
             
-            // The second comment currently won't be recognized (this is what we need to fix)
+            // The second comment currently won't be recognized individually (this is expected)
             var result2 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { secondCommentWithoutMarker, markers });
-            Assert.IsFalse(result2, "Second comment without marker currently not recognized - this is what we need to fix");
+            Assert.IsFalse(result2, "Second comment without marker individually not recognized - but will be allowed as part of block");
+        }
+
+        [TestMethod]
+        public void TestContiguousCommentBlocksDetection()
+        {
+            // Test the GetContiguousCommentBlocks method with mock trivia
+            var getContiguousCommentBlocksMethod = typeof(NoCommentsAnalyzer)
+                .GetMethod("GetContiguousCommentBlocks", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // We can't easily create real SyntaxTrivia for testing, but we can verify the method exists
+            // The real testing is done via integration tests with actual C# code
+            Assert.IsNotNull(getContiguousCommentBlocksMethod, "GetContiguousCommentBlocks method should exist");
         }
 
         [TestMethod]
