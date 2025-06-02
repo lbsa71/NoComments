@@ -16,6 +16,7 @@ namespace NoCommentsAnalyzer
     {
         private const string RemoveTitle = "Remove unauthorized comment";
         private const string KeepTitle = "Keep comment with intentional marker";
+        private const string NormalizeTitle = "Normalize suppression pattern";
 
         public sealed override ImmutableArray<string> FixableDiagnosticIds =>
             ImmutableArray.Create(NoCommentsAnalyzer.DiagnosticId);
@@ -32,6 +33,19 @@ namespace NoCommentsAnalyzer
 
             var diagnosticSpan = diagnostic.Location.SourceSpan;
             var trivia = root.FindTrivia(diagnosticSpan.Start);
+            var commentText = trivia.ToString();
+
+            // Check if this comment could be normalized as a suppression pattern
+            if (IsNormalizableSuppressionPattern(commentText))
+            {
+                // Register the normalize action first (preferred option)
+                var normalizeAction = CodeAction.Create(
+                    title: NormalizeTitle,
+                    createChangedDocument: c => NormalizeSuppressionPattern(context.Document, trivia, c),
+                    equivalenceKey: NormalizeTitle);
+
+                context.RegisterCodeFix(normalizeAction, diagnostic);
+            }
 
             // Register the remove action
             var removeAction = CodeAction.Create(
@@ -123,6 +137,96 @@ namespace NoCommentsAnalyzer
             
             // Fallback: just prepend the marker
             return $"{marker} {originalComment}";
+        }
+
+        private static bool IsNormalizableSuppressionPattern(string commentText)
+        {
+            var defaultPatterns = new[] { "TODO:", "HACK:", "FIXME:" };
+            var trimmed = commentText.TrimStart('/', '*', ' ', '\t');
+            
+            return defaultPatterns.Any(pattern => 
+            {
+                var basePattern = pattern.TrimEnd(':');
+                if (trimmed.StartsWith(basePattern, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    var nextCharIndex = basePattern.Length;
+                    if (nextCharIndex >= trimmed.Length)
+                        return false; // End of string after pattern - needs punctuation
+                        
+                    var nextChar = trimmed[nextCharIndex];
+                    // Return true if it uses non-colon punctuation (needs normalization)
+                    return nextChar == ';' || nextChar == ',' || nextChar == '-';
+                }
+                return false;
+            });
+        }
+
+        private static async Task<Document> NormalizeSuppressionPattern(Document document, SyntaxTrivia trivia, CancellationToken cancellationToken)
+        {
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            
+            var originalText = trivia.ToString();
+            var normalizedText = NormalizeSuppressionPatternText(originalText);
+            
+            // Create new trivia with the normalized text
+            var newTrivia = trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
+                ? SyntaxFactory.Comment(normalizedText)
+                : SyntaxFactory.Comment(normalizedText);
+            
+            var newRoot = root.ReplaceTrivia(trivia, newTrivia);
+            return document.WithSyntaxRoot(newRoot);
+        }
+
+        private static string NormalizeSuppressionPatternText(string commentText)
+        {
+            var defaultPatterns = new[] { "TODO:", "HACK:", "FIXME:" };
+            
+            if (commentText.StartsWith("//"))
+            {
+                var content = commentText.Substring(2).TrimStart();
+                foreach (var pattern in defaultPatterns)
+                {
+                    var basePattern = pattern.TrimEnd(':');
+                    if (content.StartsWith(basePattern, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        var nextCharIndex = basePattern.Length;
+                        if (nextCharIndex < content.Length)
+                        {
+                            var nextChar = content[nextCharIndex];
+                            if (nextChar == ';' || nextChar == ',' || nextChar == '-')
+                            {
+                                // Replace the punctuation with colon
+                                var remaining = content.Substring(nextCharIndex + 1);
+                                return $"// {basePattern.ToUpper()}: {remaining.TrimStart()}";
+                            }
+                        }
+                    }
+                }
+            }
+            else if (commentText.StartsWith("/*") && commentText.EndsWith("*/"))
+            {
+                var content = commentText.Substring(2, commentText.Length - 4).Trim();
+                foreach (var pattern in defaultPatterns)
+                {
+                    var basePattern = pattern.TrimEnd(':');
+                    if (content.StartsWith(basePattern, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        var nextCharIndex = basePattern.Length;
+                        if (nextCharIndex < content.Length)
+                        {
+                            var nextChar = content[nextCharIndex];
+                            if (nextChar == ';' || nextChar == ',' || nextChar == '-')
+                            {
+                                // Replace the punctuation with colon
+                                var remaining = content.Substring(nextCharIndex + 1).Trim();
+                                return $"/* {basePattern.ToUpper()}: {remaining} */";
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return commentText; // Return unchanged if no pattern matched
         }
     }
 }
