@@ -63,13 +63,49 @@ namespace NoCommentsAnalyzer
                 return;
                 
             var trivia = root.DescendantTrivia().ToList();
+            
+            // Get all comment trivia
+            var commentTrivia = trivia.Where(t => 
+                t.IsKind(SyntaxKind.SingleLineCommentTrivia) || t.IsKind(SyntaxKind.MultiLineCommentTrivia)).ToList();
 
+            // Group comments into contiguous blocks for intentional marker checking
+            var commentBlocks = GetContiguousCommentBlocks(trivia);
+            var processedTrivia = new HashSet<SyntaxTrivia>();
+
+            // First pass: Handle contiguous comment blocks with intentional markers
+            if (config.EnableIntentionalMarkersCheck)
+            {
+                foreach (var block in commentBlocks)
+                {
+                    if (block.Count > 0)
+                    {
+                        var firstComment = block[0];
+                        var firstCommentText = firstComment.ToString();
+                        
+                        // Check if the first comment in the block has an intentional marker
+                        if (ContainsIntentionalMarker(firstCommentText, config.IntentionalMarkers))
+                        {
+                            // Mark all comments in this block as processed (allowed)
+                            foreach (var comment in block)
+                            {
+                                processedTrivia.Add(comment);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Second pass: Process individual comments that weren't part of intentional marker blocks
             for (int i = 0; i < trivia.Count; i++)
             {
                 var t = trivia[i];
                 
                 // Check only single-line and multi-line comments (not XML doc comments)
                 if (!(t.IsKind(SyntaxKind.SingleLineCommentTrivia) || t.IsKind(SyntaxKind.MultiLineCommentTrivia)))
+                    continue;
+
+                // Skip if already processed as part of an intentional marker block
+                if (processedTrivia.Contains(t))
                     continue;
 
                 var commentText = t.ToString();
@@ -146,7 +182,23 @@ namespace NoCommentsAnalyzer
         private static bool IsSuppressionPattern(string commentText, string[] patterns)
         {
             var trimmed = commentText.TrimStart('/', '*', ' ', '\t');
-            return patterns.Any(pattern => trimmed.StartsWith(pattern, System.StringComparison.OrdinalIgnoreCase));
+            return patterns.Any(pattern => 
+            {
+                // Remove the colon from the pattern to get the base word (e.g., "TODO:" -> "TODO")
+                var basePattern = pattern.TrimEnd(':');
+                
+                // Check if the comment starts with the base pattern followed by : ; , - or space
+                if (trimmed.StartsWith(basePattern, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    var nextCharIndex = basePattern.Length;
+                    if (nextCharIndex >= trimmed.Length)
+                        return true; // End of string after pattern
+                        
+                    var nextChar = trimmed[nextCharIndex];
+                    return nextChar == ':' || nextChar == ';' || nextChar == ',' || nextChar == '-' || char.IsWhiteSpace(nextChar);
+                }
+                return false;
+            });
         }
 
         private static bool IsFileLevelBanner(SyntaxTrivia trivia, SyntaxNode root, string[] licensePatterns)

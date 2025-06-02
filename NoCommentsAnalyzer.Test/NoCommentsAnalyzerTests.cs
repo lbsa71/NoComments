@@ -232,5 +232,115 @@ namespace NoCommentsAnalyzer.Test
             // This test validates the logic conceptually
             Assert.IsNotNull(getContiguousCommentBlocksMethod, "GetContiguousCommentBlocks method should exist");
         }
+
+        [TestMethod]
+        public void TestSuppressionPatternWithFlexiblePunctuation()
+        {
+            // Test that suppression patterns should work with flexible punctuation
+            var patterns = new[] { "TODO:", "HACK:", "FIXME:" };
+            
+            var isSuppressionPatternMethod = typeof(NoCommentsAnalyzer)
+                .GetMethod("IsSuppressionPattern", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Test cases that should be recognized as suppression patterns
+            var testCases = new[]
+            {
+                "// TODO; this should work",
+                "// TODO, this should work", 
+                "// TODO- this should work",
+                "// FIXME; this should work",
+                "// HACK, this should work",
+                "/* TODO; block comment */",
+                "//   TODO;   with extra spaces",
+                "// TODO: standard colon should still work"
+            };
+            
+            foreach (var testCase in testCases)
+            {
+                var result = (bool)isSuppressionPatternMethod.Invoke(null, new object[] { testCase, patterns });
+                Assert.IsTrue(result, $"Should recognize '{testCase}' as suppression pattern");
+            }
+            
+            // Test cases that should NOT be recognized
+            var negativeCases = new[]
+            {
+                "// TODOLIST something",
+                "// NOT TODO: something", 
+                "// ATODO: something",
+                "// regular comment"
+            };
+            
+            foreach (var testCase in negativeCases)
+            {
+                var result = (bool)isSuppressionPatternMethod.Invoke(null, new object[] { testCase, patterns });
+                Assert.IsFalse(result, $"Should NOT recognize '{testCase}' as suppression pattern");
+            }
+        }
+
+        [TestMethod]
+        public void TestContiguousIntentionalMarkerBlocks()
+        {
+            // Test that contiguous comment blocks should be allowed if first comment has intentional marker
+            var markers = new[] { "HUMAN:", "NOTE:", "INTENT:", "OK:", "[!]" };
+            
+            var containsIntentionalMarkerMethod = typeof(NoCommentsAnalyzer)
+                .GetMethod("ContainsIntentionalMarker", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Test cases for comment blocks
+            var firstCommentWithMarker = "// NOTE: Decided against hashing this, because when we present this to a third party server for validation";
+            var secondCommentWithoutMarker = "// they need to get a copy of the public key anyway.";
+            
+            // The first comment should be recognized
+            var result1 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { firstCommentWithMarker, markers });
+            Assert.IsTrue(result1, "First comment with marker should be recognized");
+            
+            // The second comment currently won't be recognized (this is what we need to fix)
+            var result2 = (bool)containsIntentionalMarkerMethod.Invoke(null, new object[] { secondCommentWithoutMarker, markers });
+            Assert.IsFalse(result2, "Second comment without marker currently not recognized - this is what we need to fix");
+        }
+
+        [TestMethod]
+        public void TestSuppressionPatternNormalization()
+        {
+            // Test the normalization of suppression patterns
+            var normalizeMethod = typeof(NoCommentsCodeFixProvider)
+                .GetMethod("NormalizeSuppressionPatternText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Test single-line comments
+            var result1 = (string)normalizeMethod.Invoke(null, new object[] { "// TODO; fix this issue" });
+            Assert.AreEqual("// TODO: fix this issue", result1);
+            
+            var result2 = (string)normalizeMethod.Invoke(null, new object[] { "// FIXME, handle edge case" });
+            Assert.AreEqual("// FIXME: handle edge case", result2);
+            
+            var result3 = (string)normalizeMethod.Invoke(null, new object[] { "// HACK- temporary workaround" });
+            Assert.AreEqual("// HACK: temporary workaround", result3);
+            
+            // Test multi-line comments
+            var result4 = (string)normalizeMethod.Invoke(null, new object[] { "/* TODO; block comment */" });
+            Assert.AreEqual("/* TODO: block comment */", result4);
+            
+            // Test that already normalized comments are unchanged
+            var result5 = (string)normalizeMethod.Invoke(null, new object[] { "// TODO: already correct" });
+            Assert.AreEqual("// TODO: already correct", result5);
+        }
+
+        [TestMethod]
+        public void TestIsNormalizableSuppressionPattern()
+        {
+            // Test the detection of normalizable suppression patterns
+            var isNormalizableMethod = typeof(NoCommentsCodeFixProvider)
+                .GetMethod("IsNormalizableSuppressionPattern", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Should be normalizable
+            Assert.IsTrue((bool)isNormalizableMethod.Invoke(null, new object[] { "// TODO; fix this" }));
+            Assert.IsTrue((bool)isNormalizableMethod.Invoke(null, new object[] { "// FIXME, handle case" }));
+            Assert.IsTrue((bool)isNormalizableMethod.Invoke(null, new object[] { "// HACK- workaround" }));
+            
+            // Should NOT be normalizable (already correct or not suppression pattern)
+            Assert.IsFalse((bool)isNormalizableMethod.Invoke(null, new object[] { "// TODO: already correct" }));
+            Assert.IsFalse((bool)isNormalizableMethod.Invoke(null, new object[] { "// regular comment" }));
+            Assert.IsFalse((bool)isNormalizableMethod.Invoke(null, new object[] { "// NOTE: intentional comment" }));
+        }
     }
 }
